@@ -1,4 +1,3 @@
-#include <memory.h>
 #include "md5.h"
 
 unsigned char PADDING[] = {
@@ -157,11 +156,52 @@ void MD5Transform(unsigned int state[4], unsigned char block[64]) {
     state[2] += c;
     state[3] += d;
 }
+/**
+ * @brief 读取STM32的唯一设备标识符（UID）
+ * @param uid 存储UID的数组（必须至少12字节）
+ */
+void ReadUID(uint8_t *uid) {
+    volatile uint32_t *uid_ptr = (volatile uint32_t*)UID_BASE; // UID起始地址
 
-void MD5PASS()
+    // STM32的UID是96位（12字节），分3个32位寄存器存储
+    uint32_t uid_part1 = uid_ptr[0]; // 第1-4字节
+    uint32_t uid_part2 = uid_ptr[1]; // 第5-8字节
+    uint32_t uid_part3 = uid_ptr[2]; // 第9-12字节
+
+    // 按字节提取（避免对齐问题）
+    uid[0]  = (uid_part1 >> 0)  & 0xFF;
+    uid[1]  = (uid_part1 >> 8)  & 0xFF;
+    uid[2]  = (uid_part1 >> 16) & 0xFF;
+    uid[3]  = (uid_part1 >> 24) & 0xFF;
+    uid[4]  = (uid_part2 >> 0)  & 0xFF;
+    uid[5]  = (uid_part2 >> 8)  & 0xFF;
+    uid[6]  = (uid_part2 >> 16) & 0xFF;
+    uid[7]  = (uid_part2 >> 24) & 0xFF;
+    uid[8]  = (uid_part3 >> 0)  & 0xFF;
+    uid[9]  = (uid_part3 >> 8)  & 0xFF;
+    uid[10] = (uid_part3 >> 16) & 0xFF;
+    uid[11] = (uid_part3 >> 24) & 0xFF;
+}
+
+
+void getPASSkey()
 {
-    unsigned char hexbuf[12]; // 存储12字节UID
-    memcpy(hexbuf, (unsigned char*)0x1FFF7A10, 12);
+	uint8_t i;
+	uint8_t keyAddress = 100;
+	uint8_t buffer;
+	for(i = 0; i < 16 ;i++)
+	{
+		AT24C64_ReadByte(&eeprom, keyAddress+i, &buffer);
+		public_digest[i] = buffer;
+	}
+}
+
+
+uint8_t MD5PASS()
+{
+    uint8_t hexbuf[12]; // 存储12字节UID
+    ReadUID(hexbuf);
+	
     unsigned char decrypt[16] = {0}; 
     unsigned char mcu_digest[16] = {0};
     MD5_CTX md5c;
@@ -172,14 +212,18 @@ void MD5PASS()
     MD5Update(&md5c, hexbuf, 12); 
     MD5Final(&md5c, decrypt); 
 
+		
+		getPASSkey();
     for(i = 0; i < 16; i++)
     {
         mcu_digest[i] = decrypt[i]+i;
     }
-    if(strcmp(mcu_digest, public_digest))
+    if(memcmp(mcu_digest, public_digest, 16) != 0)
     {
-        // Fail
-
-        while(1);
+        return 0;
     }
+		else
+		{
+			return 1;
+		}
 }

@@ -1,5 +1,9 @@
 #ifndef MD5_H
 #define MD5_H
+#include <string.h>
+#include "main.h"
+#include "at24c64.h"
+
 
 typedef struct {
     unsigned int count[2];
@@ -41,7 +45,7 @@ typedef struct {
         a += b; \
     }
 
-const static volatile unsigned char public_digest[16]=
+static uint8_t public_digest[16]=
 {
     'D', 'O', 'N', 'O', 'T', 'C', 'H', 'A',
     'N', 'G', 'E', 'T', 'H', 'I', 'S', '!'
@@ -53,5 +57,5 @@ void MD5Final(MD5_CTX *context, unsigned char digest[16]);
 void MD5Transform(unsigned int state[4], unsigned char block[64]);
 void MD5Encode(unsigned char *output, unsigned int *input, unsigned int len);
 void MD5Decode(unsigned int *output, unsigned char *input, unsigned int len);
-void MD5PASS();
+uint8_t MD5PASS();
 #endif
